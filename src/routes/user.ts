@@ -1,3 +1,4 @@
+// src/routes/user.ts
 import { Hono } from 'hono';
 import { Env, Variables } from '../types';
 
@@ -6,27 +7,33 @@ const user = new Hono<{ Bindings: Env; Variables: Variables }>();
 user.get('/me', async (c) => {
 	const u = c.get('user');
 	const db = c.env.DB;
+	const userId = String(u.id);
 
 	try {
-		await db.prepare(`
+		// Single query to UPSERT and return the fresh user data
+		// Saves one database roundtrip!
+		const dbUser = await db.prepare(`
 			INSERT INTO users (id, telegram_id, first_name, username) 
 			VALUES (?, ?, ?, ?)
 			ON CONFLICT(id) DO UPDATE SET 
 				first_name = excluded.first_name, 
 				username = excluded.username
-		`).bind(String(u.id), u.id, u.first_name, u.username || null).run();
+			RETURNING *
+		`).bind(userId, u.id, u.first_name, u.username || null).first();
 
-		const dbUser = await db.prepare('SELECT * FROM users WHERE id = ?').bind(String(u.id)).first();
-		const proxies = await db.prepare('SELECT * FROM proxies WHERE user_id = ? ORDER BY id DESC').bind(String(u.id)).all();
+		const proxies = await db.prepare(
+			'SELECT * FROM proxies WHERE user_id = ? ORDER BY id DESC'
+		).bind(userId).all();
 		
-		// Fetch pending invoices to trigger frontend auto-polling
-		const pendingInvoices = await db.prepare("SELECT invoice_id, amount_usd FROM invoices WHERE user_id = ? AND status = 'pending'").bind(String(u.id)).all();
+		const pendingInvoices = await db.prepare(
+			"SELECT 1 FROM invoices WHERE user_id = ? AND status = 'pending' LIMIT 1"
+		).bind(userId).first();
 
 		return c.json({ 
 			success: true, 
 			user: dbUser, 
 			proxies: proxies.results,
-			hasPendingPayments: pendingInvoices.results.length > 0
+			hasPendingPayments: !!pendingInvoices
 		});
 	} catch (error) {
 		console.error("DB Error in /me:", error);
