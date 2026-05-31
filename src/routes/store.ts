@@ -18,7 +18,8 @@ store.post('/buy', async (c) => {
 	const dbUser = await db.prepare('SELECT balance FROM users WHERE id = ?').bind(String(user.id)).first<any>();
 	if (dbUser.balance < plan.price) return c.json({ success: false, error: 'Insufficient wallet balance.' }, 400);
 
-	const proxyUrl = `http://proxy-${Math.floor(Math.random()*9000)+1000}.residential.shop:8080`;
+	// Mocking a real residential proxy generation logic
+	const proxyUrl = `http://us-${Math.floor(Math.random()*9000)+1000}.residential.shop:8080`;
 
 	try {
 		await db.batch([
@@ -31,4 +32,5 @@ store.post('/buy', async (c) => {
 		return c.json({ success: false, error: 'Transaction failed' }, 500);
 	}
 });
+
 export default store;
