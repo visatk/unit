@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-	<title>SaaS Dashboard</title>
+	<title>SaaS Proxy Network</title>
 	<script src="https://telegram.org/js/telegram-web-app.js"></script>
 	<script src="https://cdn.tailwindcss.com"></script>
 	<style>
@@ -15,78 +15,41 @@
 			--button-text-color: var(--tg-theme-button-text-color, #ffffff);
 			--secondary-bg-color: var(--tg-theme-secondary-bg-color, #1e293b);
 		}
-		body {
-			background-color: var(--bg-color);
-			color: var(--text-color);
-			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-			-webkit-font-smoothing: antialiased;
-		}
+		body { background-color: var(--bg-color); color: var(--text-color); font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 		.tg-card { background-color: var(--secondary-bg-color); }
 		.tg-button { background-color: var(--button-color); color: var(--button-text-color); }
+		.tab-active { border-bottom: 2px solid var(--button-color); color: var(--button-color); }
+		
+		/* Custom Scrollbar for clean UI */
+		::-webkit-scrollbar { width: 4px; }
+		::-webkit-scrollbar-thumb { background: var(--button-color); border-radius: 4px; }
 	</style>
 </head>
-<body class="min-h-screen p-4 selection:bg-blue-500/30 flex flex-col items-center">
+<body class="min-h-screen pb-20 p-4 select-none">
 
-	<!-- Loading UI -->
-	<div id="loading-state" class="flex flex-col items-center justify-center min-h-[60vh]">
-		<div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-		<p class="text-sm font-medium tracking-wide animate-pulse" style="color: var(--hint-color);">Initializing Dashboard...</p>
+	<div class="flex justify-between items-center mb-6">
+		<h1 class="text-xl font-black tracking-tight">Proxy<span class="text-blue-500">Shop</span></h1>
+		<div class="tg-card px-4 py-2 rounded-xl border border-white/5 shadow-lg flex items-center gap-2" onclick="mockTopup()">
+			<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+			<span id="wallet-balance" class="font-bold text-green-400">Loading...</span>
+		</div>
 	</div>
 
-	<!-- Dashboard UI -->
-	<main id="dashboard" class="w-full max-w-md hidden flex-col gap-4 pb-8">
-		
-		<!-- Profile Section -->
-		<section class="tg-card rounded-2xl p-6 shadow-lg border border-white/5 flex items-center gap-5">
-			<div class="relative shrink-0">
-				<img id="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z'/%3E%3C/svg%3E" alt="Avatar" class="w-16 h-16 rounded-full object-cover border-2 border-blue-500/50">
-				<div class="absolute bottom-0 right-0 bg-green-500 w-4 h-4 rounded-full border-2 border-[var(--secondary-bg-color)]"></div>
-			</div>
-			<div>
-				<h1 class="text-lg font-bold leading-tight" id="profile-name">Loading...</h1>
-				<p class="text-sm mt-1" style="color: var(--hint-color);" id="profile-username">@username</p>
-				<div class="mt-2 inline-block px-2 py-1 rounded bg-black/20 text-xs font-mono" id="profile-id">ID: ---</div>
-			</div>
-		</section>
+	<div class="flex border-b border-white/10 mb-5">
+		<button onclick="switchTab('dashboard')" id="tab-dashboard" class="flex-1 py-3 font-semibold tab-active transition-all">My Proxies</button>
+		<button onclick="switchTab('store')" id="tab-store" class="flex-1 py-3 font-semibold transition-all" style="color: var(--hint-color);">Buy Proxies</button>
+	</div>
 
-		<!-- Stats / Activity Section -->
-		<div class="grid grid-cols-2 gap-4">
-			<div class="tg-card rounded-xl p-4 shadow border border-white/5">
-				<h3 class="text-xs uppercase font-bold tracking-wider mb-1" style="color: var(--hint-color);">Status</h3>
-				<p class="text-xl font-semibold text-green-400">Active</p>
-			</div>
-			<div class="tg-card rounded-xl p-4 shadow border border-white/5">
-				<h3 class="text-xs uppercase font-bold tracking-wider mb-1" style="color: var(--hint-color);">Plan</h3>
-				<p class="text-xl font-semibold text-blue-400">Free Tier</p>
-			</div>
-		</div>
+	<div id="loader" class="flex justify-center py-10 hidden">
+		<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+	</div>
 
-		<!-- Action Menu -->
-		<section class="tg-card rounded-2xl p-2 shadow-lg border border-white/5 mt-2">
-			<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-black/10 transition-colors active:scale-[0.98]">
-				<span class="font-medium">Account Settings</span>
-				<svg class="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-			</button>
-			<div class="h-[1px] w-full bg-white/5 my-1"></div>
-			<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-black/10 transition-colors active:scale-[0.98]">
-				<span class="font-medium">Upgrade to PRO</span>
-				<svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-			</button>
-		</section>
+	<div id="view-dashboard" class="space-y-4">
+		<div id="proxies-list" class="space-y-3"></div>
+	</div>
 
-		<!-- Main Action -->
-		<button onclick="Telegram.WebApp.close()" class="tg-button mt-4 w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-transform active:scale-95">
-			Close Application
-		</button>
-	</main>
-
-	<!-- Error UI -->
-	<div id="error-state" class="hidden flex-col items-center justify-center min-h-[60vh] text-center px-4">
-		<div class="bg-red-500/10 p-4 rounded-full mb-4">
-			<svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-		</div>
-		<h2 class="text-xl font-bold text-red-400 mb-2">Authentication Failed</h2>
-		<p class="text-sm" style="color: var(--hint-color);" id="error-message">Could not connect to server.</p>
+	<div id="view-store" class="hidden space-y-4">
+		<div id="plans-list" class="space-y-3"></div>
 	</div>
 
 	<script>
@@ -94,47 +57,138 @@
 		tg.expand();
 		tg.ready();
 
+		const API_HEADERS = {
+			'Content-Type': 'application/json',
+			'x-telegram-init-data': tg.initData || ''
+		};
+
 		async function initApp() {
+			if (!tg.initData) {
+				document.body.innerHTML = '<div class="p-6 text-center text-red-400 font-bold mt-10">Access Denied. Please open via Telegram Bot.</div>';
+				return;
+			}
+			
+			toggleLoader(true);
 			try {
-				if (!tg.initData) throw new Error("Please open this app inside Telegram.");
+				const [meRes, plansRes] = await Promise.all([
+					fetch('/api/me', { headers: API_HEADERS }),
+					fetch('/api/plans', { headers: API_HEADERS })
+				]);
+				
+				const meData = await meRes.json();
+				const plansData = await plansRes.json();
 
-				const res = await fetch('/api/auth', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ initData: tg.initData })
-				});
-				const data = await res.json();
-
-				document.getElementById('loading-state').classList.add('hidden');
-
-				if (res.ok && data.success) {
-					document.getElementById('dashboard').classList.remove('hidden');
-					document.getElementById('dashboard').classList.add('flex');
-					
-					const user = data.user;
-					document.getElementById('profile-name').textContent = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
-					document.getElementById('profile-username').textContent = user.username ? `@${user.username}` : '';
-					document.getElementById('profile-id').textContent = `ID: ${user.id}`;
-
-					if (user.photo_url) {
-						document.getElementById('profile-avatar').src = user.photo_url;
-					}
-				} else {
-					showError(data.error || "Session verification failed");
+				if (meData.success) {
+					document.getElementById('wallet-balance').innerText = `$${meData.user.balance.toFixed(2)}`;
+					renderProxies(meData.proxies);
 				}
-			} catch (err) {
-				document.getElementById('loading-state').classList.add('hidden');
-				showError(err.message);
+				if (plansData.success) {
+					renderPlans(plansData.plans);
+				}
+			} catch (e) {
+				tg.showAlert("Network error. Please try again.");
+			} finally {
+				toggleLoader(false);
 			}
 		}
 
-		function showError(msg) {
-			const errorEl = document.getElementById('error-state');
-			errorEl.classList.remove('hidden');
-			errorEl.classList.add('flex');
-			document.getElementById('error-message').textContent = msg;
+		function renderProxies(proxies) {
+			const list = document.getElementById('proxies-list');
+			if (proxies.length === 0) {
+				list.innerHTML = `
+					<div class="tg-card p-8 text-center rounded-2xl border border-dashed border-white/20">
+						<p style="color: var(--hint-color);" class="mb-4">No active proxies found.</p>
+						<button onclick="switchTab('store')" class="tg-button px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg">Browse Store</button>
+					</div>`;
+				return;
+			}
+			list.innerHTML = proxies.map(p => `
+				<div class="tg-card p-4 rounded-2xl border border-white/5 shadow-sm">
+					<div class="flex justify-between items-center mb-3">
+						<h3 class="font-bold text-sm uppercase tracking-wide">${p.plan_name}</h3>
+						<span class="text-xs px-2.5 py-1 bg-green-500/10 text-green-400 rounded-lg font-bold border border-green-500/20">${p.status}</span>
+					</div>
+					<div class="w-full bg-black/40 h-2.5 rounded-full mb-2 overflow-hidden">
+						<div class="bg-blue-500 h-full rounded-full w-full"></div>
+					</div>
+					<p class="text-xs mb-4 font-medium" style="color: var(--hint-color);">Data Remaining: ${p.bandwidth_remaining_gb} GB</p>
+					
+					<div class="bg-black/40 p-3 rounded-xl flex justify-between items-center group cursor-pointer active:scale-95 transition-transform" onclick="copyText('${p.proxy_url}')">
+						<code class="text-xs font-mono text-gray-300 truncate mr-2">${p.proxy_url}</code>
+						<svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+					</div>
+				</div>
+			`).join('');
 		}
 
+		function renderPlans(plans) {
+			const list = document.getElementById('plans-list');
+			list.innerHTML = plans.map(p => `
+				<div class="tg-card p-5 rounded-2xl border border-white/5 shadow flex items-center justify-between">
+					<div>
+						<h3 class="font-bold text-[15px]">${p.name}</h3>
+						<p class="text-sm mt-0.5" style="color: var(--hint-color);">${p.bandwidth_gb} GB Premium Data</p>
+					</div>
+					<button onclick="buyPlan(${p.id}, ${p.price})" class="tg-button px-5 py-2.5 rounded-xl font-bold shadow-lg transition-transform active:scale-95 text-sm">
+						$${p.price.toFixed(2)}
+					</button>
+				</div>
+			`).join('');
+		}
+
+		async function buyPlan(planId, price) {
+			tg.showConfirm(`Purchase this plan for $${price}?`, async (confirm) => {
+				if (!confirm) return;
+				toggleLoader(true);
+				
+				const res = await fetch('/api/buy', { method: 'POST', headers: API_HEADERS, body: JSON.stringify({ planId }) });
+				const data = await res.json();
+				
+				if (data.success) {
+					tg.HapticFeedback.notificationOccurred('success');
+					await initApp(); 
+					switchTab('dashboard');
+				} else {
+					tg.HapticFeedback.notificationOccurred('error');
+					tg.showAlert(data.error || "Purchase failed.");
+				}
+				toggleLoader(false);
+			});
+		}
+
+		async function mockTopup() {
+			tg.showConfirm('Add $10 test balance to wallet?', async (confirm) => {
+				if(!confirm) return;
+				const res = await fetch('/api/topup', { method: 'POST', headers: API_HEADERS, body: JSON.stringify({ amount: 10.00 }) });
+				const data = await res.json();
+				if(data.success) {
+					tg.HapticFeedback.notificationOccurred('success');
+					initApp();
+				}
+			});
+		}
+
+		function copyText(text) {
+			navigator.clipboard.writeText(text);
+			tg.HapticFeedback.impactOccurred('light');
+		}
+
+		function switchTab(tab) {
+			document.getElementById('view-dashboard').classList.toggle('hidden', tab !== 'dashboard');
+			document.getElementById('view-store').classList.toggle('hidden', tab !== 'store');
+			
+			const baseClass = 'flex-1 py-3 font-semibold transition-all';
+			document.getElementById('tab-dashboard').className = tab === 'dashboard' ? `${baseClass} tab-active` : `${baseClass} text-[var(--hint-color)]`;
+			document.getElementById('tab-store').className = tab === 'store' ? `${baseClass} tab-active` : `${baseClass} text-[var(--hint-color)]`;
+		}
+
+		function toggleLoader(show) {
+			document.getElementById('loader').classList.toggle('hidden', !show);
+			document.getElementById('view-dashboard').style.opacity = show ? '0.5' : '1';
+			document.getElementById('view-store').style.opacity = show ? '0.5' : '1';
+		}
+
+		// Boot Application
 		initApp();
 	</script>
 </body>
