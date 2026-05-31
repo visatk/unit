@@ -49,7 +49,7 @@ payments.post('/invoice', async (c) => {
 		const origin = new URL(c.req.url).origin;
 		const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
 		const callbackUrl = isLocal 
-			? `https://example.com/api/payments/webhook?secret=${c.env.WEBHOOK_SECRET || 'dev'}` 
+			? `https://unit.anonbd.workers.dev/api/payments/webhook?secret=${c.env.WEBHOOK_SECRET || 'dev'}` 
 			: `${origin}/api/payments/webhook?secret=${c.env.WEBHOOK_SECRET}`;
 		
 		const botUsername = "RavenHqBot"; 
