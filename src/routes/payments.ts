@@ -34,7 +34,7 @@ payments.post('/invoice', async (c) => {
 		const callbackUrl = `${origin}/api/payments/webhook?secret=${c.env.WEBHOOK_SECRET}`;
 		
 		// Linkback redirects user to your bot after payment
-		const botUsername = "YOUR_BOT_USERNAME"; // TODO: Replace with your actual bot username
+		const botUsername = "RavenHqBot"; // TODO: Replace with your actual bot username
 		const linkbackUrl = `https://t.me/${botUsername}`;
 
 		// Call Apirone API
