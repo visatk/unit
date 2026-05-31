@@ -1,50 +1,43 @@
 import { Hono } from 'hono';
-import { Env } from './types';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
+import { Env, Variables } from './types';
 import { authMiddleware } from './middleware/auth';
 import userRoute from './routes/user';
 import storeRoute from './routes/store';
 import paymentsRoute from './routes/payments';
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-// --- PUBLIC WEBHOOK ROUTE (No Auth) ---
-app.post('/api/webhook/apirone', async (c) => {
-	const secret = c.req.query('secret');
-	if (secret !== c.env.WEBHOOK_SECRET) {
-		return c.json({ error: 'Forbidden' }, 403);
-	}
+// Middlewares
+app.use('*', logger());
+app.use('/api/*', cors({
+	origin: '*', // Adjust for production if necessary
+	allowHeaders: ['Content-Type', 'x-telegram-init-data'],
+	allowMethods: ['GET', 'POST', 'OPTIONS'],
+}));
 
-	const body = await c.req.json();
-	const { invoice, status } = body; 
-	const db = c.env.DB;
-	const existingInvoice = await db.prepare('SELECT * FROM invoices WHERE id = ?').bind(invoice).first<any>();
-
-	if (!existingInvoice || existingInvoice.status === 'completed' || existingInvoice.status === 'paid') {
-		return c.text('OK'); 
-	}
-
-	if (status === 'paid' || status === 'completed') {
-		try {
-			await db.batch([
-				db.prepare("UPDATE invoices SET status = 'completed' WHERE id = ?").bind(invoice),
-				db.prepare("UPDATE users SET balance = balance + ? WHERE id = ?").bind(existingInvoice.amount_usd, existingInvoice.user_id)
-			]);
-		} catch (error) {
-			console.error("Webhook DB Error:", error);
-		}
-	}
-	return c.text('*ok*'); // Standard Apirone acknowledge format
+// Global Error Handler (Prevents the app from crashing and sending raw HTML errors)
+app.onError((err, c) => {
+	console.error(`[SERVER ERROR]: ${err.message}`);
+	return c.json({ 
+		success: false, 
+		error: 'Internal Server Error. Please try again later.' 
+	}, 500);
 });
 
+// Protect all /api/ routes EXCEPT webhooks
+app.use('/api/user/*', authMiddleware);
+app.use('/api/store/*', authMiddleware);
+app.use('/api/payments/invoice', authMiddleware); 
+// Note: Webhook route is NOT protected by Telegram Auth
 
-// --- PROTECTED API ROUTES ---
-app.use('/api/*', authMiddleware);
-
-// Map exactly how Frontend calls them
+// Register Routes
 app.route('/api/user', userRoute);
 app.route('/api/store', storeRoute);
 app.route('/api/payments', paymentsRoute);
 
-app.all('*', (c) => c.notFound());
+// Catch-all 404
+app.notFound((c) => c.json({ success: false, error: 'Endpoint not found' }, 404));
 
 export default app;
