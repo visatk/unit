@@ -12,32 +12,36 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 // Middlewares
 app.use('*', logger());
 app.use('/api/*', cors({
-	origin: '*', // Adjust for production if necessary
+	origin: '*', // For Telegram Mini Apps, '*' is usually required or specific TWA domains
 	allowHeaders: ['Content-Type', 'x-telegram-init-data'],
 	allowMethods: ['GET', 'POST', 'OPTIONS'],
+	maxAge: 86400, // Preflight caching for better performance
 }));
 
-// Global Error Handler (Prevents the app from crashing and sending raw HTML errors)
+// Robust Global Error Handler
 app.onError((err, c) => {
-	console.error(`[SERVER ERROR]: ${err.message}`);
-	return c.json({ 
-		success: false, 
-		error: 'Internal Server Error. Please try again later.' 
-	}, 500);
+	console.error(`[Worker Error] Path: ${c.req.path} | Error: ${err.message}`);
+	
+	// Ensure we don't leak sensitive DB details to the client
+	const isDev = c.env.WEBHOOK_SECRET === 'dev'; 
+	const errorMessage = isDev ? err.message : 'Internal Server Error. Please try again.';
+	
+	return c.json({ success: false, error: errorMessage }, 500);
 });
 
-// Protect all /api/ routes EXCEPT webhooks
+// Protect routes
 app.use('/api/user/*', authMiddleware);
 app.use('/api/store/*', authMiddleware);
-app.use('/api/payments/invoice', authMiddleware); 
-// Note: Webhook route is NOT protected by Telegram Auth
+app.use('/api/payments/invoice', authMiddleware);
 
-// Register Routes
+// Webhook route remains unprotected by Telegram Auth
+// app.post('/api/payments/webhook', ... ) is handled inside paymentsRoute
+
+// Mount Routes
 app.route('/api/user', userRoute);
 app.route('/api/store', storeRoute);
 app.route('/api/payments', paymentsRoute);
 
-// Catch-all 404
 app.notFound((c) => c.json({ success: false, error: 'Endpoint not found' }, 404));
 
 export default app;
