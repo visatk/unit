@@ -3,132 +3,139 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-	<title>Telegram Mini App</title>
-	
+	<title>SaaS Dashboard</title>
 	<script src="https://telegram.org/js/telegram-web-app.js"></script>
-	
 	<script src="https://cdn.tailwindcss.com"></script>
-	
 	<style>
-		/* Native Telegram Theme Integration */
 		:root {
-			--bg-color: var(--tg-theme-bg-color, #1f2937);
-			--text-color: var(--tg-theme-text-color, #f3f4f6);
-			--hint-color: var(--tg-theme-hint-color, #9ca3af);
+			--bg-color: var(--tg-theme-bg-color, #0f172a);
+			--text-color: var(--tg-theme-text-color, #f8fafc);
+			--hint-color: var(--tg-theme-hint-color, #94a3b8);
 			--button-color: var(--tg-theme-button-color, #3b82f6);
 			--button-text-color: var(--tg-theme-button-text-color, #ffffff);
-			--secondary-bg-color: var(--tg-theme-secondary-bg-color, #374151);
+			--secondary-bg-color: var(--tg-theme-secondary-bg-color, #1e293b);
 		}
-		
 		body {
 			background-color: var(--bg-color);
 			color: var(--text-color);
 			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+			-webkit-font-smoothing: antialiased;
 		}
-		
-		.tg-card {
-			background-color: var(--secondary-bg-color);
-		}
-		
-		.tg-button {
-			background-color: var(--button-color);
-			color: var(--button-text-color);
-		}
+		.tg-card { background-color: var(--secondary-bg-color); }
+		.tg-button { background-color: var(--button-color); color: var(--button-text-color); }
 	</style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 selection:bg-blue-500/30">
-	
-	<main id="app" class="w-full max-w-sm tg-card rounded-2xl shadow-xl p-6 text-center border border-gray-700/30 opacity-0 transition-opacity duration-300">
+<body class="min-h-screen p-4 selection:bg-blue-500/30 flex flex-col items-center">
+
+	<!-- Loading UI -->
+	<div id="loading-state" class="flex flex-col items-center justify-center min-h-[60vh]">
+		<div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+		<p class="text-sm font-medium tracking-wide animate-pulse" style="color: var(--hint-color);">Initializing Dashboard...</p>
+	</div>
+
+	<!-- Dashboard UI -->
+	<main id="dashboard" class="w-full max-w-md hidden flex-col gap-4 pb-8">
 		
-		<div id="loading-state" class="flex flex-col items-center py-8">
-			<div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-4"></div>
-			<p class="text-sm font-medium" style="color: var(--hint-color);">Authenticating securely...</p>
+		<!-- Profile Section -->
+		<section class="tg-card rounded-2xl p-6 shadow-lg border border-white/5 flex items-center gap-5">
+			<div class="relative shrink-0">
+				<img id="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z'/%3E%3C/svg%3E" alt="Avatar" class="w-16 h-16 rounded-full object-cover border-2 border-blue-500/50">
+				<div class="absolute bottom-0 right-0 bg-green-500 w-4 h-4 rounded-full border-2 border-[var(--secondary-bg-color)]"></div>
+			</div>
+			<div>
+				<h1 class="text-lg font-bold leading-tight" id="profile-name">Loading...</h1>
+				<p class="text-sm mt-1" style="color: var(--hint-color);" id="profile-username">@username</p>
+				<div class="mt-2 inline-block px-2 py-1 rounded bg-black/20 text-xs font-mono" id="profile-id">ID: ---</div>
+			</div>
+		</section>
+
+		<!-- Stats / Activity Section -->
+		<div class="grid grid-cols-2 gap-4">
+			<div class="tg-card rounded-xl p-4 shadow border border-white/5">
+				<h3 class="text-xs uppercase font-bold tracking-wider mb-1" style="color: var(--hint-color);">Status</h3>
+				<p class="text-xl font-semibold text-green-400">Active</p>
+			</div>
+			<div class="tg-card rounded-xl p-4 shadow border border-white/5">
+				<h3 class="text-xs uppercase font-bold tracking-wider mb-1" style="color: var(--hint-color);">Plan</h3>
+				<p class="text-xl font-semibold text-blue-400">Free Tier</p>
+			</div>
 		</div>
 
-		<div id="auth-state" class="hidden flex-col items-center">
-			<div class="relative mb-5">
-				<img id="user-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z'/%3E%3C/svg%3E" alt="Avatar" class="w-24 h-24 rounded-full shadow-lg object-cover border-4 border-gray-600/30">
-				<div class="absolute bottom-0 right-0 bg-green-500 w-5 h-5 rounded-full border-2 border-gray-800"></div>
-			</div>
-			
-			<h1 class="text-2xl font-bold mb-1" id="user-name">Welcome!</h1>
-			<p class="text-sm mb-6" style="color: var(--hint-color);" id="user-handle">@username</p>
-			
-			<div class="w-full bg-black/10 rounded-xl p-4 mb-6 text-left border border-white/5">
-				<p class="text-xs uppercase font-bold tracking-wider mb-1" style="color: var(--hint-color);">Telegram ID</p>
-				<p class="font-mono text-sm font-semibold" id="user-id">---</p>
-			</div>
-			
-			<button onclick="Telegram.WebApp.close()" class="tg-button w-full py-3.5 rounded-xl font-bold transition-transform active:scale-95 shadow-lg">
-				Enter Application
+		<!-- Action Menu -->
+		<section class="tg-card rounded-2xl p-2 shadow-lg border border-white/5 mt-2">
+			<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-black/10 transition-colors active:scale-[0.98]">
+				<span class="font-medium">Account Settings</span>
+				<svg class="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
 			</button>
-		</div>
+			<div class="h-[1px] w-full bg-white/5 my-1"></div>
+			<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-black/10 transition-colors active:scale-[0.98]">
+				<span class="font-medium">Upgrade to PRO</span>
+				<svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+			</button>
+		</section>
 
-		<div id="error-state" class="hidden py-6">
-			<svg class="w-16 h-16 mx-auto text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-			<h2 class="text-xl font-bold text-red-400 mb-2">Access Denied</h2>
-			<p class="text-sm mb-4" style="color: var(--hint-color);" id="error-message">Could not verify your session.</p>
-		</div>
+		<!-- Main Action -->
+		<button onclick="Telegram.WebApp.close()" class="tg-button mt-4 w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-transform active:scale-95">
+			Close Application
+		</button>
 	</main>
 
+	<!-- Error UI -->
+	<div id="error-state" class="hidden flex-col items-center justify-center min-h-[60vh] text-center px-4">
+		<div class="bg-red-500/10 p-4 rounded-full mb-4">
+			<svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+		</div>
+		<h2 class="text-xl font-bold text-red-400 mb-2">Authentication Failed</h2>
+		<p class="text-sm" style="color: var(--hint-color);" id="error-message">Could not connect to server.</p>
+	</div>
+
 	<script>
-		// Initialize Telegram Web App
 		const tg = window.Telegram.WebApp;
 		tg.expand();
 		tg.ready();
 
-		const appContainer = document.getElementById('app');
-		const loadingState = document.getElementById('loading-state');
-		const authState = document.getElementById('auth-state');
-		const errorState = document.getElementById('error-state');
-
-		appContainer.classList.remove('opacity-0');
-
-		async function authenticateUser() {
+		async function initApp() {
 			try {
-				if (!tg.initData) {
-					throw new Error("This app must be opened inside Telegram.");
-				}
+				if (!tg.initData) throw new Error("Please open this app inside Telegram.");
 
-				// Call Cloudflare Worker Backend
-				const response = await fetch('/api/auth', {
+				const res = await fetch('/api/auth', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ initData: tg.initData })
 				});
+				const data = await res.json();
 
-				const data = await response.json();
-				loadingState.classList.add('hidden');
+				document.getElementById('loading-state').classList.add('hidden');
 
-				if (response.ok && data.success) {
-					// Populate UI with verified data
-					authState.classList.remove('hidden');
-					authState.classList.add('flex');
+				if (res.ok && data.success) {
+					document.getElementById('dashboard').classList.remove('hidden');
+					document.getElementById('dashboard').classList.add('flex');
 					
 					const user = data.user;
-					document.getElementById('user-name').textContent = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
-					document.getElementById('user-handle').textContent = user.username ? `@${user.username}` : 'No username';
-					document.getElementById('user-id').textContent = user.id;
+					document.getElementById('profile-name').textContent = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
+					document.getElementById('profile-username').textContent = user.username ? `@${user.username}` : '';
+					document.getElementById('profile-id').textContent = `ID: ${user.id}`;
 
 					if (user.photo_url) {
-						document.getElementById('user-avatar').src = user.photo_url;
+						document.getElementById('profile-avatar').src = user.photo_url;
 					}
 				} else {
-					showError(data.error || "Verification failed");
+					showError(data.error || "Session verification failed");
 				}
 			} catch (err) {
-				loadingState.classList.add('hidden');
+				document.getElementById('loading-state').classList.add('hidden');
 				showError(err.message);
 			}
 		}
 
 		function showError(msg) {
-			errorState.classList.remove('hidden');
+			const errorEl = document.getElementById('error-state');
+			errorEl.classList.remove('hidden');
+			errorEl.classList.add('flex');
 			document.getElementById('error-message').textContent = msg;
 		}
 
-		// Run Authentication automatically
-		authenticateUser();
+		initApp();
 	</script>
 </body>
 </html>
