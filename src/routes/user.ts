@@ -16,4 +16,5 @@ user.get('/me', async (c) => {
 
 	return c.json({ success: true, user: dbUser, proxies: proxies.results });
 });
+
 export default user;
