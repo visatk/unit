@@ -8,7 +8,6 @@ user.get('/me', async (c) => {
 	const db = c.env.DB;
 
 	try {
-		// UPSERT User
 		await db.prepare(`
 			INSERT INTO users (id, telegram_id, first_name, username) 
 			VALUES (?, ?, ?, ?)
@@ -17,20 +16,21 @@ user.get('/me', async (c) => {
 				username = excluded.username
 		`).bind(String(u.id), u.id, u.first_name, u.username || null).run();
 
-		// Fetch fresh user data
 		const dbUser = await db.prepare('SELECT * FROM users WHERE id = ?').bind(String(u.id)).first();
-		
-		// Fetch active proxies
 		const proxies = await db.prepare('SELECT * FROM proxies WHERE user_id = ? ORDER BY id DESC').bind(String(u.id)).all();
+		
+		// Fetch pending invoices to trigger frontend auto-polling
+		const pendingInvoices = await db.prepare("SELECT invoice_id, amount_usd FROM invoices WHERE user_id = ? AND status = 'pending'").bind(String(u.id)).all();
 
 		return c.json({ 
 			success: true, 
 			user: dbUser, 
-			proxies: proxies.results 
+			proxies: proxies.results,
+			hasPendingPayments: pendingInvoices.results.length > 0
 		});
 	} catch (error) {
 		console.error("DB Error in /me:", error);
-		throw error; // Let global handler catch it
+		throw error; 
 	}
 });
 
