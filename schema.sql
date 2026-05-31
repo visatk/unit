@@ -1,6 +1,7 @@
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS plans;
 DROP TABLE IF EXISTS proxies;
+DROP TABLE IF EXISTS invoices;
 
 CREATE TABLE users (
     id TEXT PRIMARY KEY,
@@ -30,5 +31,16 @@ CREATE TABLE proxies (
     proxy_url TEXT NOT NULL,
     status TEXT DEFAULT 'Active',
     purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- New Table for Apirone Invoices
+CREATE TABLE invoices (
+    id TEXT PRIMARY KEY, -- Apirone Invoice ID
+    user_id TEXT NOT NULL,
+    amount_usd REAL NOT NULL,
+    currency TEXT NOT NULL,
+    status TEXT DEFAULT 'created', -- created, paid, completed, expired
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
