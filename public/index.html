@@ -1,12 +1,17 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 	<title>ProxyShop - Premium Proxies</title>
+	
+	<!-- Telegram WebApp API (Required for production) -->
 	<script src="https://telegram.org/js/telegram-web-app.js"></script>
+	
+	<!-- Tailwind CSS & Icons -->
 	<script src="https://cdn.tailwindcss.com"></script>
 	<script src="https://unpkg.com/lucide@latest"></script>
+	
 	<script>
 		tailwind.config = {
 			darkMode: 'class',
@@ -30,19 +35,24 @@
 		}
 	</script>
 	<style>
+		:root {
+			--bg-color: var(--tg-theme-bg-color, #0f172a);
+			--text-color: var(--tg-theme-text-color, #f8fafc);
+		}
+		
 		body { 
-			background-color: var(--tg-theme-bg-color, #0f172a); 
-			color: var(--tg-theme-text-color, #f8fafc); 
+			background-color: var(--bg-color); 
+			color: var(--text-color); 
 			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
 			-webkit-tap-highlight-color: transparent;
 		}
 		
 		/* Glassmorphism utilities */
 		.glass-card {
-			background: rgba(30, 41, 59, 0.7);
+			background: rgba(30, 41, 59, 0.5);
 			backdrop-filter: blur(12px);
 			-webkit-backdrop-filter: blur(12px);
-			border: 1px solid rgba(255, 255, 255, 0.08);
+			border: 1px solid rgba(255, 255, 255, 0.05);
 		}
 		
 		/* Hide scrollbar for clean UI */
@@ -61,139 +71,137 @@
 		}
 		input[type=range]::-webkit-slider-thumb {
 			-webkit-appearance: none;
-			height: 20px;
-			width: 20px;
+			height: 24px;
+			width: 24px;
 			border-radius: 50%;
 			background: var(--tg-theme-button-color, #3b82f6);
 			cursor: pointer;
-			margin-top: -8px;
-			box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+			margin-top: -10px;
+			box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+			border: 2px solid white;
 		}
 		input[type=range]::-webkit-slider-runnable-track {
 			width: 100%;
 			height: 6px;
 			cursor: pointer;
-			background: rgba(255,255,255,0.1);
+			background: rgba(255,255,255,0.15);
 			border-radius: 99px;
 		}
 	</style>
 </head>
-<body class="min-h-screen pb-24 px-4 pt-6 select-none relative">
+<body class="min-h-screen pb-6 px-4 pt-6 select-none relative transition-colors duration-300">
 
-	<!-- Header -->
-	<header class="flex justify-between items-center mb-8">
-		<div class="flex items-center gap-2">
-			<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-				<i data-lucide="globe-2" class="text-white w-6 h-6"></i>
-			</div>
-			<div>
-				<h1 class="text-xl font-black tracking-tight leading-none">Proxy<span class="text-blue-500">Shop</span></h1>
-				<p class="text-[10px] text-tg-hint uppercase font-bold tracking-wider mt-1">Premium Network</p>
-			</div>
+	<!-- Error State for Non-Telegram Browsers -->
+	<div id="env-error" class="hidden fixed inset-0 z-[100] bg-tg-bg flex items-center justify-center p-6 text-center">
+		<div class="glass-card p-8 rounded-3xl w-full max-w-sm border border-red-500/20">
+			<i data-lucide="alert-triangle" class="w-12 h-12 text-red-500 mx-auto mb-4"></i>
+			<h2 class="text-xl font-bold mb-2">Access Denied</h2>
+			<p class="text-tg-hint text-sm">Please open this application directly from the Telegram bot.</p>
 		</div>
-		
-		<button onclick="openDepositModal()" class="glass-card px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-2 active:scale-95 transition-transform border border-green-500/30 bg-green-500/10">
-			<i data-lucide="wallet" class="w-4 h-4 text-green-400"></i>
-			<span id="wallet-balance" class="font-bold text-green-400">$-.--</span>
-		</button>
-	</header>
-
-	<!-- Navigation Tabs -->
-	<div class="flex bg-tg-secondary p-1 rounded-2xl mb-6 shadow-inner">
-		<button onclick="switchTab('dashboard')" id="tab-dashboard" class="flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all bg-tg-bg text-tg-btn shadow">My Proxies</button>
-		<button onclick="switchTab('store')" id="tab-store" class="flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all text-tg-hint hover:text-white">Store</button>
 	</div>
 
-	<!-- Loading Skeleton -->
-	<div id="global-loader" class="space-y-4">
-		<div class="glass-card h-32 rounded-3xl animate-pulse"></div>
-		<div class="glass-card h-32 rounded-3xl animate-pulse delay-75"></div>
-	</div>
-
-	<!-- TAB: Dashboard -->
-	<div id="view-dashboard" class="tab-content">
-		<div id="proxies-empty" class="hidden flex-col items-center justify-center py-12 px-4 text-center">
-			<div class="w-20 h-20 bg-tg-secondary rounded-full flex items-center justify-center mb-4">
-				<i data-lucide="server-off" class="w-10 h-10 text-tg-hint"></i>
+	<div id="app-container" class="hidden">
+		<!-- Header -->
+		<header class="flex justify-between items-center mb-8">
+			<div class="flex items-center gap-3">
+				<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+					<i data-lucide="globe" class="text-white w-6 h-6"></i>
+				</div>
+				<div>
+					<h1 class="text-xl font-black tracking-tight leading-none">Proxy<span class="text-blue-500">Shop</span></h1>
+					<p class="text-[10px] text-tg-hint uppercase font-bold tracking-wider mt-1" id="user-greeting">Welcome</p>
+				</div>
 			</div>
-			<h2 class="text-lg font-bold mb-2">No Active Proxies</h2>
-			<p class="text-sm text-tg-hint mb-6 max-w-[250px]">You don't have any active proxies yet. Head over to the store to get started.</p>
-			<button onclick="switchTab('store')" class="w-full max-w-[200px] py-3.5 bg-tg-btn text-tg-btnText rounded-2xl font-bold active:scale-95 transition-transform shadow-lg shadow-blue-500/25">
-				Browse Store
+			
+			<button onclick="openDepositModal()" class="glass-card px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-2 active:scale-95 transition-transform border border-green-500/30 bg-green-500/10">
+				<i data-lucide="wallet" class="w-4 h-4 text-green-400"></i>
+				<span id="wallet-balance" class="font-bold text-green-400">$-.--</span>
 			</button>
-		</div>
-		<div id="proxies-list" class="space-y-4"></div>
-	</div>
+		</header>
 
-	<!-- TAB: Store -->
-	<div id="view-store" class="tab-content">
-		<div class="mb-6">
-			<h2 class="text-lg font-bold">Available Plans</h2>
-			<p class="text-sm text-tg-hint">High-quality residential IPs</p>
+		<!-- Navigation Tabs -->
+		<div class="flex bg-tg-secondary p-1.5 rounded-2xl mb-6 shadow-inner">
+			<button onclick="switchTab('dashboard')" id="tab-dashboard" class="flex-1 py-2.5 text-sm font-bold rounded-xl transition-all bg-tg-bg text-tg-btn shadow">My Proxies</button>
+			<button onclick="switchTab('store')" id="tab-store" class="flex-1 py-2.5 text-sm font-bold rounded-xl transition-all text-tg-hint hover:text-white">Store</button>
 		</div>
-		<div id="plans-list" class="space-y-4"></div>
+
+		<!-- Loading Skeleton -->
+		<div id="global-loader" class="space-y-4">
+			<div class="glass-card h-36 rounded-3xl animate-pulse"></div>
+			<div class="glass-card h-36 rounded-3xl animate-pulse delay-100"></div>
+		</div>
+
+		<!-- TAB: Dashboard (My Proxies) -->
+		<div id="view-dashboard" class="tab-content">
+			<div id="proxies-empty" class="hidden flex-col items-center justify-center py-12 px-4 text-center">
+				<div class="w-20 h-20 bg-tg-secondary rounded-full flex items-center justify-center mb-4 border border-white/5">
+					<i data-lucide="server-off" class="w-10 h-10 text-tg-hint"></i>
+				</div>
+				<h2 class="text-lg font-bold mb-2">No Active Proxies</h2>
+				<p class="text-sm text-tg-hint mb-6 max-w-[250px]">You don't have any active proxies yet. Check out the store to get started.</p>
+				<button onclick="switchTab('store')" class="w-full max-w-[200px] py-3.5 bg-tg-btn text-tg-btnText rounded-2xl font-bold active:scale-95 transition-transform shadow-lg shadow-blue-500/25">
+					Browse Store
+				</button>
+			</div>
+			<div id="proxies-list" class="space-y-4 pb-8"></div>
+		</div>
+
+		<!-- TAB: Store -->
+		<div id="view-store" class="tab-content">
+			<div class="mb-4">
+				<h2 class="text-lg font-bold">Premium Residential</h2>
+				<p class="text-sm text-tg-hint">High-quality IP addresses</p>
+			</div>
+			<div id="plans-list" class="space-y-4 pb-8"></div>
+		</div>
 	</div>
 
 	<!-- MODAL: Deposit -->
-	<div id="deposit-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
-		<div class="bg-tg-bg w-full sm:w-[400px] rounded-t-3xl sm:rounded-3xl p-6 transform transition-transform translate-y-full" id="deposit-modal-content">
+	<div id="deposit-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm transition-opacity opacity-0">
+		<div class="bg-tg-bg w-full sm:w-[400px] rounded-t-3xl sm:rounded-3xl p-6 transform transition-transform translate-y-full border-t border-white/10" id="deposit-modal-content">
 			<div class="flex justify-between items-center mb-6">
-				<h3 class="text-xl font-bold">Add Funds</h3>
-				<button onclick="closeDepositModal()" class="p-2 rounded-full bg-tg-secondary text-tg-hint active:scale-95"><i data-lucide="x" class="w-5 h-5"></i></button>
+				<div>
+					<h3 class="text-xl font-bold">Add Funds</h3>
+					<p class="text-xs text-tg-hint mt-1">Select amount and crypto network</p>
+				</div>
+				<button onclick="closeDepositModal()" class="p-2.5 rounded-full bg-tg-secondary text-tg-hint active:scale-95"><i data-lucide="x" class="w-5 h-5"></i></button>
 			</div>
 			
-			<div class="space-y-6">
+			<div class="space-y-8 pb-4">
 				<!-- Amount Slider -->
 				<div>
 					<div class="flex justify-between items-end mb-4">
 						<label class="text-sm font-medium text-tg-hint">Deposit Amount</label>
-						<span class="text-3xl font-black text-white">$<span id="deposit-amount-display">10</span></span>
+						<span class="text-4xl font-black text-white">$<span id="deposit-amount-display">10</span></span>
 					</div>
 					<input type="range" id="deposit-slider" min="1" max="100" value="10" oninput="updateDepositAmount(this.value)">
 					<div class="flex justify-between text-xs text-tg-hint mt-2 font-medium">
-						<span>$1</span>
+						<span>Min $1</span>
 						<span>$50</span>
-						<span>$100</span>
+						<span>Max $100</span>
 					</div>
 				</div>
 
 				<!-- Crypto Selection -->
 				<div>
-					<label class="text-sm font-medium text-tg-hint block mb-3">Select Crypto</label>
+					<label class="text-sm font-medium text-tg-hint block mb-3">Select Cryptocurrency</label>
 					<div class="grid grid-cols-3 gap-3">
-						<button onclick="selectCrypto('ltc')" id="crypto-ltc" class="crypto-btn border-2 border-tg-btn bg-tg-btn/10 p-3 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition-all">
+						<button onclick="selectCrypto('ltc')" id="crypto-ltc" class="crypto-btn border border-tg-btn bg-tg-btn/10 p-3 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition-all">
 							<img src="https://cryptologos.cc/logos/litecoin-ltc-logo.svg?v=029" class="w-8 h-8" alt="LTC">
 							<span class="text-xs font-bold">LTC</span>
 						</button>
-						<button onclick="selectCrypto('doge')" id="crypto-doge" class="crypto-btn border-2 border-transparent bg-tg-secondary p-3 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition-all">
+						<button onclick="selectCrypto('doge')" id="crypto-doge" class="crypto-btn border border-transparent bg-tg-secondary p-3 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition-all">
 							<img src="https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=029" class="w-8 h-8" alt="DOGE">
 							<span class="text-xs font-bold">DOGE</span>
 						</button>
-						<button onclick="selectCrypto('btc')" id="crypto-btc" class="crypto-btn border-2 border-transparent bg-tg-secondary p-3 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition-all">
+						<button onclick="selectCrypto('btc')" id="crypto-btc" class="crypto-btn border border-transparent bg-tg-secondary p-3 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition-all">
 							<img src="https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=029" class="w-8 h-8" alt="BTC">
 							<span class="text-xs font-bold">BTC</span>
 						</button>
 					</div>
 				</div>
-
-				<button onclick="generateInvoice()" id="btn-pay" class="w-full py-4 bg-tg-btn text-tg-btnText rounded-2xl font-bold text-lg active:scale-95 transition-transform flex justify-center items-center gap-2 shadow-lg shadow-blue-500/25 mt-4">
-					<i data-lucide="zap" class="w-5 h-5"></i>
-					Pay With Crypto
-				</button>
-				
-				<!-- Mock Topup for Dev (Keep hidden in prod, but keeping it per your backend) -->
-				<button onclick="mockDevTopup()" class="w-full py-2 text-xs text-tg-hint underline text-center mt-2">
-					[Dev] Quick Add $10
-				</button>
+				<!-- Note: The main CTA is now handled by Telegram's Native MainButton -->
 			</div>
-		</div>
-	</div>
-
-	<!-- Full Screen Action Loader -->
-	<div id="action-loader" class="fixed inset-0 z-[60] hidden bg-black/50 backdrop-blur-sm flex items-center justify-center">
-		<div class="glass-card p-6 rounded-3xl flex flex-col items-center gap-4">
-			<i data-lucide="loader-2" class="w-10 h-10 animate-spin text-tg-btn"></i>
-			<span class="font-medium text-sm" id="action-loader-text">Processing...</span>
 		</div>
 	</div>
 
@@ -203,33 +211,47 @@
 
 		// Telegram API Setup
 		const tg = window.Telegram.WebApp;
-		tg.expand();
-		tg.ready();
 
-		// State
+		// State Management
 		let currentUser = null;
 		let selectedCrypto = 'ltc';
 		let depositAmount = 10;
+		let isModalOpen = false;
 		
-		// Auth Headers
-		const API_HEADERS = {
-			'Content-Type': 'application/json',
-			'x-telegram-init-data': tg.initData || 'mock_data_for_local_testing' // Fallback for local testing if needed
-		};
+		// Event Handlers References
+		const onMainButtonClick = () => generateInvoice();
+		const onBackButtonClick = () => switchTab('dashboard');
 
+		// Application Bootstrapper
 		async function initApp() {
+			// 1. Enforce Production Telegram Environment
 			if (!tg.initData) {
-				// Prevent complete breakage outside TG, but warn user
-				console.warn("Running outside Telegram. API calls will likely fail due to lack of initData.");
+				document.getElementById('env-error').classList.remove('hidden');
+				return; // Halt execution
 			}
-			
+
+			// 2. Setup Telegram UI Preferences
+			document.getElementById('app-container').classList.remove('hidden');
+			tg.expand();
+			tg.ready();
+			tg.enableClosingConfirmation(); // Protect user from accidentally swiping down while paying
+
+			// Theme Syncing logic
+			syncTheme();
+			tg.onEvent('themeChanged', syncTheme);
+
+			// 3. API Headers Setup (Production Auth)
+			window.API_HEADERS = {
+				'Content-Type': 'application/json',
+				'x-telegram-init-data': tg.initData
+			};
+
 			document.getElementById('global-loader').classList.remove('hidden');
-			document.getElementById('view-dashboard').classList.remove('active');
 			
 			try {
 				const [meRes, plansRes] = await Promise.all([
-					fetch('/api/user/me', { headers: API_HEADERS }),
-					fetch('/api/store/plans', { headers: API_HEADERS })
+					fetch('/api/user/me', { headers: window.API_HEADERS }),
+					fetch('/api/store/plans', { headers: window.API_HEADERS })
 				]);
 				
 				const meData = await meRes.json();
@@ -238,21 +260,37 @@
 				if (meData.success) {
 					currentUser = meData.user;
 					updateBalanceUI(currentUser.balance);
+					
+					// Set Greeting
+					const firstName = tg.initDataUnsafe?.user?.first_name || 'User';
+					document.getElementById('user-greeting').innerText = `Hello, ${firstName}`;
+					
 					renderProxies(meData.proxies);
 				} else {
-					showToast('Failed to load user profile.', 'error');
+					tg.showAlert('Failed to load user profile. Please restart the bot.');
 				}
 				
 				if (plansData.success) {
 					renderPlans(plansData.plans);
 				}
 			} catch (e) {
-				showToast("Network Error. Please restart the bot.", "error");
+				tg.showAlert("Network Error. Please check your connection and try again.");
 				console.error(e);
 			} finally {
 				document.getElementById('global-loader').classList.add('hidden');
 				switchTab('dashboard');
 			}
+		}
+
+		function syncTheme() {
+			if (tg.colorScheme === 'dark') {
+				document.documentElement.classList.add('dark');
+			} else {
+				document.documentElement.classList.remove('dark');
+			}
+			// Update header color for iOS/Android native status bar
+			tg.setHeaderColor('bg_color'); 
+			tg.setBackgroundColor('bg_color');
 		}
 
 		function updateBalanceUI(balance) {
@@ -274,41 +312,41 @@
 			emptyState.classList.remove('flex');
 
 			list.innerHTML = proxies.map(p => {
-				// Calculate dummy progress for UI purposes based on plan (assuming 1GB = 100%)
-				// In a real app, you'd calculate (remaining / total) * 100
-				const progress = Math.min(100, Math.max(5, (p.bandwidth_remaining_gb / 20) * 100)); 
+				// Calculate progress (visual only, based on DB bandwidth_remaining_gb vs total)
+				const percent = (p.bandwidth_remaining_gb / p.bandwidth_gb) * 100;
+				const progress = Math.min(100, Math.max(0, percent));
 				
 				return `
 				<div class="glass-card p-5 rounded-3xl relative overflow-hidden group">
 					<!-- Decorative Glow -->
-					<div class="absolute -right-10 -top-10 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl"></div>
+					<div class="absolute -right-8 -top-8 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
 					
 					<div class="flex justify-between items-start mb-4 relative z-10">
 						<div>
 							<h3 class="font-bold text-[16px] text-white">${p.plan_name}</h3>
 							<p class="text-xs text-green-400 font-medium mt-1 flex items-center gap-1">
-								<span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-								${p.status}
+								<span class="w-1.5 h-1.5 rounded-full bg-green-500 ${p.status === 'active' ? 'animate-pulse' : ''}"></span>
+								${p.status.charAt(0).toUpperCase() + p.status.slice(1)}
 							</p>
 						</div>
-						<div class="bg-tg-secondary p-2 rounded-xl text-tg-hint">
+						<div class="bg-tg-secondary p-2.5 rounded-xl text-tg-hint shadow-sm">
 							<i data-lucide="shield-check" class="w-5 h-5"></i>
 						</div>
 					</div>
 					
-					<div class="mb-4 relative z-10">
+					<div class="mb-5 relative z-10">
 						<div class="flex justify-between text-xs mb-2 font-medium">
 							<span class="text-tg-hint">Data Remaining</span>
-							<span class="text-white">${p.bandwidth_remaining_gb.toFixed(2)} GB</span>
+							<span class="text-white">${p.bandwidth_remaining_gb.toFixed(2)} GB / ${p.bandwidth_gb} GB</span>
 						</div>
-						<div class="w-full bg-black/40 h-2 rounded-full overflow-hidden">
+						<div class="w-full bg-black/40 h-2.5 rounded-full overflow-hidden border border-white/5">
 							<div class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full transition-all duration-1000" style="width: ${progress}%"></div>
 						</div>
 					</div>
 					
 					<div class="bg-black/40 p-1 pl-4 rounded-2xl flex justify-between items-center relative z-10 border border-white/5">
 						<code class="text-[11px] font-mono text-gray-300 truncate mr-2 w-full select-all">${p.proxy_url}</code>
-						<button onclick="copyText('${p.proxy_url}')" class="p-3 bg-tg-secondary rounded-xl text-tg-btn hover:text-white transition-colors active:scale-95 shrink-0">
+						<button onclick="copyText('${p.proxy_url}')" class="p-3 bg-tg-btn text-tg-btnText rounded-xl hover:opacity-90 transition-opacity active:scale-95 shrink-0 shadow-lg shadow-blue-500/20">
 							<i data-lucide="copy" class="w-4 h-4"></i>
 						</button>
 					</div>
@@ -321,17 +359,17 @@
 		function renderPlans(plans) {
 			const list = document.getElementById('plans-list');
 			list.innerHTML = plans.map(p => `
-				<div class="glass-card p-1 pr-1 rounded-3xl flex items-center justify-between border border-white/5 relative overflow-hidden">
+				<div class="glass-card p-1.5 pr-1.5 rounded-3xl flex items-center justify-between border border-white/5 relative overflow-hidden transition-transform active:scale-[0.98]">
 					<div class="flex items-center gap-4 pl-4 py-3">
-						<div class="w-12 h-12 rounded-2xl bg-tg-secondary flex items-center justify-center border border-white/5">
+						<div class="w-12 h-12 rounded-2xl bg-tg-secondary flex items-center justify-center border border-white/5 shadow-inner">
 							<i data-lucide="wifi" class="w-6 h-6 text-tg-btn"></i>
 						</div>
 						<div>
 							<h3 class="font-bold text-[15px] text-white">${p.name}</h3>
-							<p class="text-xs text-tg-hint mt-0.5">${p.bandwidth_gb} GB • Non-expiring</p>
+							<p class="text-[11px] text-tg-hint mt-0.5">${p.bandwidth_gb} GB • Non-expiring</p>
 						</div>
 					</div>
-					<button onclick="buyPlan(${p.id}, ${p.price})" class="h-full py-5 px-6 bg-tg-btn text-tg-btnText rounded-[20px] font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-transform">
+					<button onclick="buyPlan(${p.id}, ${p.price})" class="h-full py-5 px-6 bg-tg-btn text-tg-btnText rounded-[22px] font-bold shadow-lg shadow-blue-500/30 active:scale-95 transition-transform">
 						$${p.price.toFixed(2)}
 					</button>
 				</div>
@@ -341,10 +379,11 @@
 
 		async function buyPlan(planId, price) {
 			if (!currentUser) return;
+			tg.HapticFeedback.impactOccurred('medium');
 			
 			if (currentUser.balance < price) {
-				tg.HapticFeedback.notificationOccurred('warning');
-				tg.showConfirm(`Insufficient balance ($${currentUser.balance.toFixed(2)}). You need $${price.toFixed(2)}.\n\nWould you like to add funds now?`, (confirm) => {
+				// Native Telegram Confirm Dialog
+				tg.showConfirm(`Insufficient balance ($${currentUser.balance.toFixed(2)}).\nYou need $${price.toFixed(2)} to buy this plan.\n\nWould you like to add funds now?`, (confirm) => {
 					if(confirm) {
 						updateDepositAmount(Math.ceil(price - currentUser.balance));
 						document.getElementById('deposit-slider').value = Math.ceil(price - currentUser.balance);
@@ -357,61 +396,85 @@
 			tg.showConfirm(`Confirm purchase for $${price}?`, async (confirm) => {
 				if (!confirm) return;
 				
-				showLoader(true, "Provisioning Proxy...");
+				// Optional: disable UI or show local loader here
 				try {
-					const res = await fetch('/api/store/buy', { method: 'POST', headers: API_HEADERS, body: JSON.stringify({ planId }) });
+					const res = await fetch('/api/store/buy', { method: 'POST', headers: window.API_HEADERS, body: JSON.stringify({ planId }) });
 					const data = await res.json();
 					
 					if (data.success) {
 						tg.HapticFeedback.notificationOccurred('success');
-						showToast("Proxy provisioned successfully!", "success");
-						await initApp(); // Refresh data
+						tg.showAlert("Proxy provisioned successfully! You can find it in 'My Proxies'.");
+						await initApp(); // Refresh user data and proxies
 					} else {
 						tg.HapticFeedback.notificationOccurred('error');
-						showToast(data.error || "Purchase failed.", "error");
+						tg.showAlert(data.error || "Purchase failed.");
 					}
 				} catch (e) {
-					showToast("Network error during purchase.", "error");
-				} finally {
-					showLoader(false);
+					tg.HapticFeedback.notificationOccurred('error');
+					tg.showAlert("Network error during purchase.");
 				}
 			});
 		}
 
-		// --- Deposit & Invoice Logic ---
+		// --- Native Deposit & Invoice Logic ---
 
 		function openDepositModal() {
+			if (isModalOpen) return;
+			isModalOpen = true;
 			tg.HapticFeedback.impactOccurred('light');
+			
 			const modal = document.getElementById('deposit-modal');
 			const content = document.getElementById('deposit-modal-content');
+			
 			modal.classList.remove('hidden');
 			modal.classList.add('flex');
-			// Small delay for animation
+			
+			// Animation
 			setTimeout(() => {
+				modal.classList.remove('opacity-0');
 				content.classList.remove('translate-y-full');
 			}, 10);
+
+			// Setup Telegram MainButton
+			tg.MainButton.setText(`PAY $${depositAmount} WITH ${selectedCrypto.toUpperCase()}`);
+			tg.MainButton.show();
+			tg.MainButton.onClick(onMainButtonClick);
 		}
 
 		function closeDepositModal() {
+			if (!isModalOpen) return;
+			isModalOpen = false;
+			
+			const modal = document.getElementById('deposit-modal');
 			const content = document.getElementById('deposit-modal-content');
+			
 			content.classList.add('translate-y-full');
+			modal.classList.add('opacity-0');
+			
 			setTimeout(() => {
-				const modal = document.getElementById('deposit-modal');
 				modal.classList.add('hidden');
 				modal.classList.remove('flex');
 			}, 300);
+
+			// Clean up Telegram MainButton
+			tg.MainButton.hide();
+			tg.MainButton.offClick(onMainButtonClick);
 		}
 
 		function updateDepositAmount(val) {
 			depositAmount = parseInt(val);
 			document.getElementById('deposit-amount-display').innerText = depositAmount;
+			
+			if (tg.MainButton.isVisible) {
+				tg.MainButton.setText(`PAY $${depositAmount} WITH ${selectedCrypto.toUpperCase()}`);
+			}
 		}
 
 		function selectCrypto(currency) {
 			tg.HapticFeedback.selectionChanged();
 			selectedCrypto = currency;
 			
-			// Reset all buttons
+			// Reset all buttons visual state
 			document.querySelectorAll('.crypto-btn').forEach(btn => {
 				btn.classList.remove('border-tg-btn', 'bg-tg-btn/10');
 				btn.classList.add('border-transparent', 'bg-tg-secondary');
@@ -421,19 +484,25 @@
 			const selectedBtn = document.getElementById(`crypto-${currency}`);
 			selectedBtn.classList.add('border-tg-btn', 'bg-tg-btn/10');
 			selectedBtn.classList.remove('border-transparent', 'bg-tg-secondary');
+
+			if (tg.MainButton.isVisible) {
+				tg.MainButton.setText(`PAY $${depositAmount} WITH ${selectedCrypto.toUpperCase()}`);
+			}
 		}
 
 		async function generateInvoice() {
 			if(depositAmount < 1) {
-				showToast("Minimum deposit is $1", "error");
+				tg.showAlert("Minimum deposit is $1");
 				return;
 			}
 
-			showLoader(true, "Generating Invoice...");
+			// Natively show loading state on the MainButton
+			tg.MainButton.showProgress();
+			
 			try {
 				const res = await fetch('/api/payments/invoice', {
 					method: 'POST',
-					headers: API_HEADERS,
+					headers: window.API_HEADERS,
 					body: JSON.stringify({ amountUsd: depositAmount, currency: selectedCrypto })
 				});
 				const data = await res.json();
@@ -441,68 +510,47 @@
 				if (data.success && data.invoiceUrl) {
 					tg.HapticFeedback.notificationOccurred('success');
 					closeDepositModal();
-					// Open Apirone invoice in external browser/Telegram browser
-					tg.openLink(data.invoiceUrl);
 					
-					// Inform user to return after paying
+					// Open Apirone invoice natively inside Telegram's browser or external browser
+					tg.openLink(data.invoiceUrl, { try_instant_view: false });
+					
+					// Inform user to wait for blockchain confirmation
 					setTimeout(() => {
-						tg.showAlert("After completing your payment, please wait a few minutes for the blockchain to confirm it. Your balance will update automatically.");
-					}, 1000);
+						tg.showPopup({
+							title: 'Invoice Created',
+							message: 'Please complete the payment on the opened page. Your balance will update automatically after blockchain confirmation (usually 5-15 mins).',
+							buttons: [{ type: 'ok' }]
+						});
+					}, 500);
+
 				} else {
 					tg.HapticFeedback.notificationOccurred('error');
-					showToast(data.error || "Failed to create invoice", "error");
+					tg.showAlert(data.error || "Failed to create invoice.");
 				}
 			} catch (e) {
-				showToast("Gateway error. Try again.", "error");
+				tg.HapticFeedback.notificationOccurred('error');
+				tg.showAlert("Gateway error. Please try again later.");
 			} finally {
-				showLoader(false);
+				tg.MainButton.hideProgress();
 			}
 		}
-
-		async function mockDevTopup() {
-			showLoader(true, "Adding dev funds...");
-			try {
-				const res = await fetch('/api/payments/topup', { 
-					method: 'POST', 
-					headers: API_HEADERS, 
-					body: JSON.stringify({ amount: 10.00 }) 
-				});
-				const data = await res.json();
-				if(data.success) {
-					tg.HapticFeedback.notificationOccurred('success');
-					closeDepositModal();
-					showToast("Dev funds added!", "success");
-					await initApp();
-				}
-			} finally {
-				showLoader(false);
-			}
-		}
-
-		// --- Utilities ---
 
 		function copyText(text) {
-			if (navigator.clipboard && window.isSecureContext) {
-				navigator.clipboard.writeText(text);
-			} else {
-				// Fallback for older Telegram clients
-				let textArea = document.createElement("textarea");
-				textArea.value = text;
-				textArea.style.position = "fixed";
-				textArea.style.left = "-999999px";
-				textArea.style.top = "-999999px";
-				document.body.appendChild(textArea);
-				textArea.focus();
-				textArea.select();
-				try {
-					document.execCommand('copy');
-				} catch (err) {
-					console.error('Fallback: Oops, unable to copy', err);
-				}
-				textArea.remove();
+			// Telegram Mini App clipboard method via JS fallback
+			let textArea = document.createElement("textarea");
+			textArea.value = text;
+			textArea.style.position = "fixed";
+			textArea.style.opacity = "0";
+			document.body.appendChild(textArea);
+			textArea.focus();
+			textArea.select();
+			try {
+				document.execCommand('copy');
+				tg.HapticFeedback.impactOccurred('light');
+			} catch (err) {
+				console.error('Copy failed', err);
 			}
-			tg.HapticFeedback.impactOccurred('light');
-			showToast("Proxy URL Copied!", "success");
+			textArea.remove();
 		}
 
 		function switchTab(tab) {
@@ -522,48 +570,22 @@
 			if (tab === 'dashboard') {
 				dashBtn.classList.add(...activeClasses); dashBtn.classList.remove(...inactiveClasses);
 				storeBtn.classList.remove(...activeClasses); storeBtn.classList.add(...inactiveClasses);
+				
+				// Hide native back button on root tab
+				tg.BackButton.hide();
+				tg.BackButton.offClick(onBackButtonClick);
 			} else {
 				storeBtn.classList.add(...activeClasses); storeBtn.classList.remove(...inactiveClasses);
 				dashBtn.classList.remove(...activeClasses); dashBtn.classList.add(...inactiveClasses);
-			}
-		}
-
-		function showLoader(show, text = "Loading...") {
-			const loader = document.getElementById('action-loader');
-			const loaderText = document.getElementById('action-loader-text');
-			if (show) {
-				loaderText.innerText = text;
-				loader.classList.remove('hidden');
-			} else {
-				loader.classList.add('hidden');
-			}
-		}
-
-		function showToast(message, type = 'info') {
-			// Using Telegram's native alert for critical things, but for UI flow, a custom toast is better.
-			// Since we want to keep it simple, we'll use tg.showAlert for errors and native visual cues for success.
-			if (type === 'error') {
-				tg.showAlert(message);
-			} else {
-				// Simple custom toast logic
-				const toast = document.createElement('div');
-				toast.className = `fixed bottom-6 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full text-sm font-bold shadow-lg z-[100] transition-all duration-300 translate-y-10 opacity-0 ${type === 'success' ? 'bg-green-500 text-white' : 'bg-tg-secondary text-white border border-white/10'}`;
-				toast.innerText = message;
-				document.body.appendChild(toast);
 				
-				// Animate in
-				setTimeout(() => { toast.classList.remove('translate-y-10', 'opacity-0'); }, 10);
-				
-				// Remove after 3s
-				setTimeout(() => {
-					toast.classList.add('translate-y-10', 'opacity-0');
-					setTimeout(() => toast.remove(), 300);
-				}, 2500);
+				// Show native back button on inner tabs
+				tg.BackButton.show();
+				tg.BackButton.onClick(onBackButtonClick);
 			}
 		}
 
 		// Boot Application
-		initApp();
+		document.addEventListener("DOMContentLoaded", initApp);
 	</script>
 </body>
 </html>
