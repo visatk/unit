@@ -1,4 +1,3 @@
-// src/routes/user.ts
 import { Hono } from 'hono';
 import { Env, Variables } from '../types';
 
