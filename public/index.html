@@ -1,32 +1,134 @@
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hello, World!</title>
-	</head>
-	<body>
-		<h1 id="heading"></h1>
-		<p>This page comes from a static asset stored at `public/index.html` as configured in `wrangler.jsonc`.</p>
-		<button id="button" type="button">Fetch a random UUID</button>
-		<output id="random" for="button"></output>
-		<script>
-			fetch('/message')
-				.then((resp) => resp.text())
-				.then((text) => {
-					const h1 = document.getElementById('heading');
-					h1.textContent = text;
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	<title>Telegram Mini App</title>
+	
+	<script src="https://telegram.org/js/telegram-web-app.js"></script>
+	
+	<script src="https://cdn.tailwindcss.com"></script>
+	
+	<style>
+		/* Native Telegram Theme Integration */
+		:root {
+			--bg-color: var(--tg-theme-bg-color, #1f2937);
+			--text-color: var(--tg-theme-text-color, #f3f4f6);
+			--hint-color: var(--tg-theme-hint-color, #9ca3af);
+			--button-color: var(--tg-theme-button-color, #3b82f6);
+			--button-text-color: var(--tg-theme-button-text-color, #ffffff);
+			--secondary-bg-color: var(--tg-theme-secondary-bg-color, #374151);
+		}
+		
+		body {
+			background-color: var(--bg-color);
+			color: var(--text-color);
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		}
+		
+		.tg-card {
+			background-color: var(--secondary-bg-color);
+		}
+		
+		.tg-button {
+			background-color: var(--button-color);
+			color: var(--button-text-color);
+		}
+	</style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 selection:bg-blue-500/30">
+	
+	<main id="app" class="w-full max-w-sm tg-card rounded-2xl shadow-xl p-6 text-center border border-gray-700/30 opacity-0 transition-opacity duration-300">
+		
+		<div id="loading-state" class="flex flex-col items-center py-8">
+			<div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-4"></div>
+			<p class="text-sm font-medium" style="color: var(--hint-color);">Authenticating securely...</p>
+		</div>
+
+		<div id="auth-state" class="hidden flex-col items-center">
+			<div class="relative mb-5">
+				<img id="user-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z'/%3E%3C/svg%3E" alt="Avatar" class="w-24 h-24 rounded-full shadow-lg object-cover border-4 border-gray-600/30">
+				<div class="absolute bottom-0 right-0 bg-green-500 w-5 h-5 rounded-full border-2 border-gray-800"></div>
+			</div>
+			
+			<h1 class="text-2xl font-bold mb-1" id="user-name">Welcome!</h1>
+			<p class="text-sm mb-6" style="color: var(--hint-color);" id="user-handle">@username</p>
+			
+			<div class="w-full bg-black/10 rounded-xl p-4 mb-6 text-left border border-white/5">
+				<p class="text-xs uppercase font-bold tracking-wider mb-1" style="color: var(--hint-color);">Telegram ID</p>
+				<p class="font-mono text-sm font-semibold" id="user-id">---</p>
+			</div>
+			
+			<button onclick="Telegram.WebApp.close()" class="tg-button w-full py-3.5 rounded-xl font-bold transition-transform active:scale-95 shadow-lg">
+				Enter Application
+			</button>
+		</div>
+
+		<div id="error-state" class="hidden py-6">
+			<svg class="w-16 h-16 mx-auto text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+			<h2 class="text-xl font-bold text-red-400 mb-2">Access Denied</h2>
+			<p class="text-sm mb-4" style="color: var(--hint-color);" id="error-message">Could not verify your session.</p>
+		</div>
+	</main>
+
+	<script>
+		// Initialize Telegram Web App
+		const tg = window.Telegram.WebApp;
+		tg.expand();
+		tg.ready();
+
+		const appContainer = document.getElementById('app');
+		const loadingState = document.getElementById('loading-state');
+		const authState = document.getElementById('auth-state');
+		const errorState = document.getElementById('error-state');
+
+		appContainer.classList.remove('opacity-0');
+
+		async function authenticateUser() {
+			try {
+				if (!tg.initData) {
+					throw new Error("This app must be opened inside Telegram.");
+				}
+
+				// Call Cloudflare Worker Backend
+				const response = await fetch('/api/auth', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ initData: tg.initData })
 				});
 
-			const button = document.getElementById("button");
-			button.addEventListener("click", () => {
-				fetch('/random')
-					.then((resp) => resp.text())
-					.then((text) => {
-						const random = document.getElementById('random');
-						random.textContent = text;
-					});
-			});
-		</script>
-	</body>
+				const data = await response.json();
+				loadingState.classList.add('hidden');
+
+				if (response.ok && data.success) {
+					// Populate UI with verified data
+					authState.classList.remove('hidden');
+					authState.classList.add('flex');
+					
+					const user = data.user;
+					document.getElementById('user-name').textContent = user.first_name + (user.last_name ? ` ${user.last_name}` : '');
+					document.getElementById('user-handle').textContent = user.username ? `@${user.username}` : 'No username';
+					document.getElementById('user-id').textContent = user.id;
+
+					if (user.photo_url) {
+						document.getElementById('user-avatar').src = user.photo_url;
+					}
+				} else {
+					showError(data.error || "Verification failed");
+				}
+			} catch (err) {
+				loadingState.classList.add('hidden');
+				showError(err.message);
+			}
+		}
+
+		function showError(msg) {
+			errorState.classList.remove('hidden');
+			document.getElementById('error-message').textContent = msg;
+		}
+
+		// Run Authentication automatically
+		authenticateUser();
+	</script>
+</body>
 </html>
